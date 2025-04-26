@@ -1,0 +1,33 @@
+Question 1:
+The initial output jumps to the CS 0xf000, to start execution of the BIOS. The first couple of instructions after that check whether or not some value in the current code segement is zero, and if not, it jumps even further back to an earlier address. This is likely an error that needs to be fixed. The next few instructions appear to be setting more things up for the bios, first clearing out the data register, then moving the contents of the stack segment register into the data register, and then moving the stack pointer to a much eariler memory address, and the base register to a closer one.
+
+Question 2:
+A) The switch from 16 to 32-bit mode happens in boot.S, in lines 48 through 55 - first, the GDT for the new mode is loaded in, the flag bit for the new mode is added to the control register which informs the processor of the switch. After that, it continues to the next instruction with a jump, as the following instructions are in a 32-bit code segment. The processor then switches over and begins executing the 32-bit code by indicating this in GDB with the line "The target architecture is set to i386".
+
+B) The last instruction of the bootloader is "call *0x10018". The first function in the kernel is "movw $0x1234,0x472".
+
+C) The first instruction of the kernel is located at 0x1000c
+
+D) The bootloader decides how many sectors it must read using several different variables from the ELF header object. First, it determines where to start by adding the location of the ELFHDR object with its e_phoff attribute, the offset of the program header. It determines where to end by adding that with the e_phnum attribute, the number of entries in the program header table. It then loops from start to end and calls loadseg for each value.
+
+Question 3:
+The first instruction that would be broken by a change in the linking address is the jump to the code section beginning execution in 32-bit protected mode. This is due to the segment jumping to $PROT_MODE_CSEG which is hard coded to 0x8, the kernel code segment selector. After changing the link address to 0x7200, setting a breakpoint, and continuing: a SIGTRAP with si repeatedly returning the instruction "ljmp $0x8,$0x7232". The qemu terminal returned many addresses and outputed "Triple fault. Halting for inspection via QEMU monitor". This was an expected output given it is attempting to jump to the hard coded $PROT_MODE_CSEG segment.
+
+Question 4:
+They're different before and after entering the kernel because, during bootloading, memory is being overwritten or modified as the kernel is loaded into memory. At the second breakpoint, the memory contains the kernel instructions.
+
+Question 5:
+The first instruction that would fail is the instruction following the jump to the eax register. This is due to the first instruction set being hard coded to a very high address, resulting in a jump to an incorrect address and execution of incorrect code without the mapping. After commenting out the "movl    %eax, %cr0" code in entry.S, it attempted to execute "movl    $0x0,%ebp" which outputted a core dumped in qemu-gdb and promptly closed the connection.
+
+Question 6:
+A) Console.c provides lower-level IO functions, mainly cputchar(), and is referenced by printf.c for higher-level functions for printing information to the console. Specifically, printf.c uses cputchar to create its putch function. This referenced by vcprintf and cprintf being used for the formatting of strings to be printed.
+
+B) After "y=", a random value would be printed. This is because va_arg is called twice but with only one argument in the va_list, resulting in its behavior being undefined.
+
+C) Since va_start requires the previous argument in the stack to be provided to begin using arguments in va_list, a copy of the argument stack can be made and go through the orginial stack pushing the elements popped to the the copy. This would result in the code being a reversed order from the original. The copy va_list then can be used in the va_start, vprintfmt, and va_end to produce a similar output to the original.
+
+Question 7:
+The kernel initializes its stack at "movl $(bootstacktop),%esp" and the stack is located at the vitrual memory address 0xf0110000. The kernel reserves space for its stack with KSTKSIZE of space in the bootstack label located in the data section of entry.S. The stack pointer is initialized at the end of the reserved section. After examining the memory after the pointers address was clear, this was up to address 0xf0110100.
+
+Question 8:
+Each time test_backtrace is called, it pushes two 32-bit words. These words are base pointers, return addresses, and base registeres.
